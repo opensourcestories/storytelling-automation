@@ -1,24 +1,28 @@
 export default async function handler(req, res) {
+    // Restrict to POST requests
     if (req.method !== "POST") {
         return res.status(405).json({ error: "Method not allowed" });
     }
 
     try {
+        // Validate incoming payload
         const { payload } = req.body;
+        if (!payload || !payload.responses) {
+            return res.status(400).json({ error: "Invalid or missing payload.responses" });
+        }
 
-        // Extract storyteller info (kept for future use even if unused)
-        const bookerName = payload?.responses?.name?.value || "Unknown";
-        const bookerEmail = payload?.responses?.email?.value || "No email";
-        const story = payload?.responses?.story?.value || "No story provided";
-        const pronouns = payload?.responses?.pronouns?.value || "Not provided";
-        const links = payload?.responses?.links?.value || "No links";
-        const notes = payload?.responses?.notes?.value || "No notes";
-        const profilePicture = payload?.responses?.profile_picture?.value || "No picture";
-        const consent = payload?.responses?.["I-consent-to-the-recording-of-this-session"]?.value
-            ? " Consented"
-            : " Not Consented";
+        // Extract storyteller info with safe defaults
+        const bookerName = payload.responses.name?.value || "Unknown";
+        const bookerEmail = payload.responses.email?.value || "No email";
+        const story = payload.responses.story?.value || "No story provided";
+        const pronouns = payload.responses.pronouns?.value || "Not provided";
+        const notes = payload.responses.notes?.value || "No notes";
+        const profilePicture = payload.responses.profile_picture?.value || "No picture";
+        const consent = payload.responses["I-consent-to-the-recording-of-this-session"]?.value
+            ? "Consented"
+            : "Not Consented";
 
-        // Issue template (as you provided)
+        // Issue template (unchanged)
         const issueTemplate = `
 # Roles:
 
@@ -69,36 +73,47 @@ export default async function handler(req, res) {
 - [ ] (coordinator or publisher) schedule posts on various channels
 `;
 
-        // Use environment variable for GitHub repo (format: owner/repo)
+        // Validate environment variables
         const githubRepo = process.env.GITHUB_ISSUE_PAGE;
-        if (!githubRepo) {
-            return res.status(500).json({ error: "GITHUB_ISSUE_PAGE environment variable not set" });
+        if (!githubRepo || !githubRepo.includes("api.github.com")) {
+            return res.status(500).json({ error: "GITHUB_ISSUE_PAGE must be a valid GitHub API URL (e.g., https://api.github.com/repos/eskayML/storytelling-automation/issues)" });
         }
 
-        // Validate GitHub token exists
-        if (!process.env.GITHUB_TOKEN) {
+        const githubToken = process.env.GITHUB_TOKEN;
+        if (!githubToken) {
             return res.status(500).json({ error: "GITHUB_TOKEN environment variable not set" });
         }
 
-        // Call GitHub API to create issue with updated headers and authorization
-        const response = await fetch(
-            githubRepo,
-             // Use the GitHub API URL for creating issues
-            {
-                method: "POST",
-                headers: {
-                    "Accept": "application/vnd.github+json",
-                    "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`,
-                    "X-GitHub-Api-Version": "2022-11-28",
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    title: `[STORY] Publish ${bookerName}'s story`,
-                    body: issueTemplate,
-                    labels: ["story"],
-                }),
-            }
-        );
+        // Construct GitHub API payload (explicitly exclude invalid fields like 'links')
+        const issuePayload = {
+            title: `[STORY] Publish ${bookerName}'s story`,
+            body: `**Storyteller Info:**
+- Name: ${bookerName}
+- Email: ${bookerEmail}
+- Story: ${story}
+- Pronouns: ${pronouns}
+- Notes: ${notes}
+- Profile Picture: ${profilePicture}
+- Consent: ${consent}
+
+${issueTemplate}`,
+            labels: ["story"],
+        };
+
+        // Debug: Log the payload being sent to GitHub
+        console.log("GitHub API payload:", JSON.stringify(issuePayload, null, 2));
+
+        // Call GitHub API to create issue
+        const response = await fetch(githubRepo, {
+            method: "POST",
+            headers: {
+                "Accept": "application/vnd.github.v3+json",
+                "Authorization": `Bearer ${githubToken}`,
+                "X-GitHub-Api-Version": "2022-11-28",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(issuePayload),
+        });
 
         const data = await response.json();
 
@@ -113,13 +128,14 @@ export default async function handler(req, res) {
             return res.status(response.status).json({
                 error: data.message || "GitHub API error",
                 documentation_url: data.documentation_url,
+                details: data,
             });
         }
     } catch (err) {
         console.error("Webhook error:", err);
-        return res.status(500).json({ 
+        return res.status(500).json({
             error: "Internal Server Error",
-            details: err.message 
+            details: err.message,
         });
     }
 }
