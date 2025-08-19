@@ -74,14 +74,22 @@ export default async function handler(req, res) {
         if (!githubRepo) {
             return res.status(500).json({ error: "GITHUB_ISSUE_PAGE environment variable not set" });
         }
-        // Call GitHub API to create issue
+
+        // Validate GitHub token exists
+        if (!process.env.GITHUB_TOKEN) {
+            return res.status(500).json({ error: "GITHUB_TOKEN environment variable not set" });
+        }
+
+        // Call GitHub API to create issue with updated headers and authorization
         const response = await fetch(
             `https://api.github.com/repos/${githubRepo}/issues`,
             {
                 method: "POST",
                 headers: {
-                    Authorization: `token ${process.env.GITHUB_TOKEN}`,
-                    Accept: "application/vnd.github+json",
+                    "Accept": "application/vnd.github+json",
+                    "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`,
+                    "X-GitHub-Api-Version": "2022-11-28",
+                    "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
                     title: `[STORY] Publish ${bookerName}'s story`,
@@ -95,18 +103,22 @@ export default async function handler(req, res) {
 
         if (response.ok) {
             return res.status(200).json({
-                message: "GitHub issue created",
+                message: "GitHub issue created successfully",
                 issue: data.html_url,
+                issue_number: data.number,
             });
         } else {
-            return res.status(500).json({
+            console.error("GitHub API error:", data);
+            return res.status(response.status).json({
                 error: data.message || "GitHub API error",
+                documentation_url: data.documentation_url,
             });
         }
     } catch (err) {
         console.error("Webhook error:", err);
-        return res.status(500).json({ error: "Internal Server Error" });
+        return res.status(500).json({ 
+            error: "Internal Server Error",
+            details: err.message 
+        });
     }
 }
-
-
