@@ -82,7 +82,8 @@ export default async function handler(req, res) {
 
         // Call GitHub API to create issue with updated headers and authorization
         const response = await fetch(
-            `https://api.github.com/repos/${githubRepo}/issues`,
+            GITHUB_ISSUE_PAGE,
+             // Use the GitHub API URL for creating issues
             {
                 method: "POST",
                 headers: {
