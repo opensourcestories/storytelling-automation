@@ -12,15 +12,16 @@ export default async function handler(req, res) {
         }
 
         // Extract storyteller info with safe defaults
-        const bookerName = payload.responses.name?.value || "Unknown";
-        const bookerEmail = payload.responses.email?.value || "No email";
-        const story = payload.responses.story?.value || "No story provided";
-        const pronouns = payload.responses.pronouns?.value || "Not provided";
-        const notes = payload.responses.notes?.value || "No notes";
-        const profilePicture = payload.responses.profile_picture?.value || "No picture";
-        const consent = payload.responses["I-consent-to-the-recording-of-this-session"]?.value
-            ? "Consented"
-            : "Not Consented";
+        const bookerName = payload?.responses?.name?.value || "Unknown";
+        const bookerEmail = payload?.responses?.email?.value || "No email";
+        const story = payload?.responses?.story?.value || "No story provided";
+        const pronouns = payload?.responses?.pronouns?.value || "Not provided";
+        const links = payload?.responses?.links?.value || "No links";
+        const notes = payload?.responses?.notes?.value || "No notes";
+        const profilePicture = payload?.responses?.profile_picture?.value || "No picture";
+        const consent = payload?.responses?.["I-consent-to-the-recording-of-this-session"]?.value
+            ? " Consented"
+            : " Not Consented";
 
         // Issue template (unchanged)
         const issueTemplate = `
@@ -74,9 +75,9 @@ export default async function handler(req, res) {
 `;
 
         // Validate environment variables
-        const githubRepo = process.env.GITHUB_ISSUE_PAGE;
+        const githubRepo = process.env.ISSUE_API_URL;
         if (!githubRepo || !githubRepo.includes("api.github.com")) {
-            return res.status(500).json({ error: "GITHUB_ISSUE_PAGE must be a valid GitHub API URL (e.g., https://api.github.com/repos/eskayML/storytelling-automation/issues)" });
+            return res.status(500).json({ error: "ISSUE_API_URL must be a valid GitHub API URL (e.g., https://api.github.com/repos/eskayML/storytelling-automation/issues)" });
         }
 
         const githubToken = process.env.GITHUB_TOKEN;
@@ -87,16 +88,7 @@ export default async function handler(req, res) {
         // Construct GitHub API payload (explicitly exclude invalid fields like 'links')
         const issuePayload = {
             title: `[STORY] Publish ${bookerName}'s story`,
-            body: `**Storyteller Info:**
-- Name: ${bookerName}
-- Email: ${bookerEmail}
-- Story: ${story}
-- Pronouns: ${pronouns}
-- Notes: ${notes}
-- Profile Picture: ${profilePicture}
-- Consent: ${consent}
-
-${issueTemplate}`,
+            body: `${issueTemplate}`,
             labels: ["story"],
         };
 

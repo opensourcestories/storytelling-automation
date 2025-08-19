@@ -9,11 +9,11 @@ Automates the creation of GitHub issues for storytelling workflows using a webho
 
 ## Usage
 
-Send a webhook from Cal.com  to the GitHub API with storyteller details. Issues are created in the repo set by `GITHUB_ISSUE_PAGE` variable.
+Send a webhook from Cal.com  to the GitHub API with storyteller details. Issues are created in the repo set by `ISSUE_API_URL` variable.
 
 ## Setup
 
-1. Set `GITHUB_TOKEN` and `GITHUB_ISSUE_PAGE` in your `.env` file.
+1. Set `GITHUB_TOKEN` and `ISSUE_API_URL` in your `.env` file.
 
 
 2. Deploy or run the API endpoint in your preferred environment.
